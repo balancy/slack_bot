@@ -4,16 +4,22 @@ from __future__ import annotations
 
 import logging
 
-import uvicorn
 from environs import Env
 from fastapi import BackgroundTasks, FastAPI, Request
 
 from app.slack_commands import handle_command
 from app.slack_events import handle_event, verify_slack_request
 
-from .config import APP_PORT
-
 app = FastAPI()
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+env = Env()
+env.read_env()
+
+app.state.bot_token = env.str("SLACK_BOT_TOKEN")
+app.state.signing_secret = env.str("SLACK_SIGNING_SECRET")
 
 
 @app.post("/slack/events")
@@ -39,14 +45,7 @@ async def slack_commands(
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    logger = logging.getLogger(__name__)
-
-    env = Env()
-    env.read_env()
-
-    app.state.bot_token = env.str("SLACK_BOT_TOKEN")
-    app.state.signing_secret = env.str("SLACK_SIGNING_SECRET")
-
     logger.info("Starting server...")
-    uvicorn.run(app, host="0.0.0.0", port=APP_PORT)
+    import uvicorn
+
+    uvicorn.run(app, host="0.0.0.0", port=8002)

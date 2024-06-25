@@ -11,23 +11,27 @@ from slack_sdk.web.client import WebClient
 logger = logging.getLogger(__name__)
 
 
-def verify_slack_request(request: Request, signing_secret: str) -> None:
+async def verify_slack_request(request: Request, signing_secret: str) -> None:
     """Verify incoming Slack requests."""
+    headers = request.headers
+    logger.info(f"Headers: {headers}")
+
+    if "X-Slack-Request-Timestamp" not in headers:
+        logger.error("X-Slack-Request-Timestamp header missing")
+        raise HTTPException(status_code=400, detail="Bad Request: Missing required headers")
+
     body = await request.body()
-    timestamp = request.headers["X-Slack-Request-Timestamp"]
-    slack_signature = request.headers["X-Slack-Signature"]
+    timestamp = headers["X-Slack-Request-Timestamp"]
+    slack_signature = headers["X-Slack-Signature"]
 
     basestring = f"v0:{timestamp}:{body.decode('utf-8')}"
-    secret = bytes(signing_secret, "utf-8")
+    secret = bytes(signing_secret, 'utf-8')
 
-    my_signature = (
-        "v0=" + hmac.new(secret, basestring.encode("utf-8"), hashlib.sha256).hexdigest()
-    )
+    my_signature = "v0=" + hmac.new(secret, basestring.encode('utf-8'), hashlib.sha256).hexdigest()
 
     if not hmac.compare_digest(my_signature, slack_signature):
         logger.warning("Request verification failed")
         raise HTTPException(status_code=403, detail="Request verification failed")
-
 
 async def handle_event(payload: dict, bot_token: str) -> None:
     """Handle incoming Slack events."""

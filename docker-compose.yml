@@ -1,14 +1,14 @@
-version: '3.8'
-
 services:
   app:
+    container_name: slack_bot
+    restart: always
     build:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      - "8002:8002"
     env_file:
       - .env
     volumes:
       - .:/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8002
