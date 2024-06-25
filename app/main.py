@@ -6,10 +6,10 @@ import logging
 
 from environs import Env
 from fastapi import BackgroundTasks, FastAPI, Request
+from pydantic import BaseModel
 
 from app.slack_commands import handle_command
 from app.slack_events import handle_event, verify_slack_request
-from pydantic import BaseModel
 
 app = FastAPI()
 
@@ -25,6 +25,7 @@ app.state.signing_secret = env.str("SLACK_SIGNING_SECRET")
 class SlackEvent(BaseModel):
     type: str
     challenge: str = None
+
 
 @app.post("/slack/events")
 async def slack_events(

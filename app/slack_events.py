@@ -33,16 +33,17 @@ async def verify_slack_request(request: Request, signing_secret: str) -> None:
         logger.warning("Request verification failed")
         raise HTTPException(status_code=403, detail="Request verification failed")
 
-async def handle_event(payload: dict, bot_token: str) -> None:
+def handle_event(payload: dict, bot_token: str) -> None:
     """Handle incoming Slack events."""
     client = WebClient(token=bot_token)
     event = payload.get("event", {})
-    if event.get("type") == "app_mention":
+
+    if event.get("type") == "message" and "subtype" not in event:
         channel_id = event.get("channel")
         user_message = event.get("text")
         response_message = f"You said: {user_message}"
 
         try:
-            await client.chat_postMessage(channel=channel_id, text=response_message)
+            client.chat_postMessage(channel=channel_id, text=response_message)
         except SlackApiError as e:
             logger.error(f"Error posting message: {e.response['error']}")
