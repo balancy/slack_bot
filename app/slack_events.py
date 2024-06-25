@@ -39,6 +39,10 @@ def handle_event(payload: dict, bot_token: str) -> None:
     event = payload.get("event", {})
 
     if event.get("type") == "message" and "subtype" not in event:
+        if event.get("bot_id") is not None:
+            logger.info("Ignoring bot's own message")
+            return
+
         channel_id = event.get("channel")
         user_message = event.get("text")
         response_message = f"You said: {user_message}"
