@@ -54,6 +54,25 @@ async def slack_commands(
     return {"status": "ok"}
 
 
+@app.get("/slack/oauth/callback")
+async def oauth_callback(request: Request):
+    code = request.query_params.get('code')
+    if not code:
+        return {"error": "No code provided"}
+
+    client = WebClient()
+
+    try:
+        response = client.oauth_v2_access(
+            client_id=client_id,
+            client_secret=client_secret,
+            code=code,
+            redirect_uri="https://somepetprojects.ru/slack/oauth/callback"
+        )
+        return {"ok": True, "response": response}
+    except SlackApiError as e:
+        return {"error": str(e)}
+
 if __name__ == "__main__":
     logger.info("Starting server...")
     import uvicorn
