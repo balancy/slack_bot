@@ -4,6 +4,7 @@ certifi==2024.6.2
 click==8.1.7
 dnspython==2.6.1
 email_validator==2.2.0
+environs==11.0.0
 fastapi==0.111.0
 fastapi-cli==0.0.4
 h11==0.14.0
@@ -14,8 +15,10 @@ idna==3.7
 Jinja2==3.1.4
 markdown-it-py==3.0.0
 MarkupSafe==2.1.5
+marshmallow==3.21.3
 mdurl==0.1.2
 orjson==3.10.5
+packaging==24.1
 pydantic==2.7.4
 pydantic_core==2.18.4
 Pygments==2.18.0
