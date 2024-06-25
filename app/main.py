@@ -9,6 +9,7 @@ from fastapi import BackgroundTasks, FastAPI, Request
 
 from app.slack_commands import handle_command
 from app.slack_events import handle_event, verify_slack_request
+from pydantic import BaseModel
 
 app = FastAPI()
 
@@ -21,15 +22,23 @@ env.read_env()
 app.state.bot_token = env.str("SLACK_BOT_TOKEN")
 app.state.signing_secret = env.str("SLACK_SIGNING_SECRET")
 
+class SlackEvent(BaseModel):
+    type: str
+    challenge: str = None
 
 @app.post("/slack/events")
 async def slack_events(
     request: Request, background_tasks: BackgroundTasks
 ) -> dict[str, str]:
     """Handle incoming Slack events."""
+    body = await request.json()
+    event = SlackEvent(**body)
+
+    if event.type == "url_verification":
+        return {"challenge": event.challenge}
+
     await verify_slack_request(request, app.state.signing_secret)
-    payload = await request.json()
-    background_tasks.add_task(handle_event, payload, app.state.bot_token)
+    background_tasks.add_task(handle_event, body, app.state.bot_token)
     return {"status": "ok"}
 
 
