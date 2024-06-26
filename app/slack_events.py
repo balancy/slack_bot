@@ -3,6 +3,7 @@
 import hashlib
 import hmac
 import logging
+import re
 
 import httpx
 from fastapi import HTTPException, Request
@@ -56,7 +57,9 @@ async def handle_event(payload: dict, db: Session) -> None:
     channel_id = event.get("channel")
     user_message = event.get("text")
 
-    response_message = await ask_chatgpt(user_message)
+    cleaned_message = re.sub(r'<@U[A-Z0-9]+>', '', user_message).strip()
+
+    response_message = await ask_chatgpt(cleaned_message)
 
     logger.info(f"Event: {event}")
     logger.info(f"Channel ID from event: {channel_id}")
