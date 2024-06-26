@@ -72,7 +72,7 @@ async def oauth_callback(request: Request) -> dict[str, Any]:
             code=code,
             redirect_uri=f"{HOST}/slack/oauth/callback",
         )
-        return {"ok": True, "response": response}
+        return {"ok": True, "response": response.data}
     except SlackApiError as e:
         return {"error": str(e)}
 
