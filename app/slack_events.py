@@ -8,7 +8,7 @@ import httpx
 from fastapi import HTTPException, Request
 from sqlalchemy.orm import Session
 
-from app.chatgpt import call_chatgpt
+from app.chatgpt import ask_chatgpt
 
 from .models import Team
 
@@ -57,7 +57,7 @@ async def handle_event(payload: dict, db: Session) -> None:
     channel_id = event.get("channel")
     user_message = event.get("text")
 
-    response_message = await call_chatgpt(user_message)
+    response_message = await ask_chatgpt(user_message)
 
     logger.info(f"Event: {event}")
     logger.info(f"Channel ID from event: {channel_id}")

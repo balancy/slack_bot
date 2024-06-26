@@ -7,7 +7,7 @@ from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 from sqlalchemy.orm import Session
 
-from .chatgpt import call_chatgpt
+from .chatgpt import ask_chatgpt
 from .models import Team
 
 logger = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ async def handle_command(payload: dict, db: Session) -> None:
     if not text:
         response_message = "You should write some text after calling panda."
     else:
-        response_message = await call_chatgpt(text)
+        response_message = await ask_chatgpt(text)
 
     try:
         logger.info(f"Responding to command in response_url: {response_url}")
