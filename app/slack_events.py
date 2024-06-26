@@ -72,3 +72,8 @@ async def handle_event(payload: dict, bot_token: str) -> None:
                     logger.info("Message posted successfully.")
         except Exception as e:
             logger.error(f"Error posting message: {str(e)}")
+
+    elif event.get("type") == "member_joined_channel":
+        channel_id = event["channel"]
+        user_id = event["user"]
+        logger.info(f"User {user_id} joined channel: {channel_id}")

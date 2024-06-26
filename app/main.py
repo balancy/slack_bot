@@ -30,17 +30,13 @@ CLIENT_SECRET = env.str("SLACK_CLIENT_SECRET")
 HOST = env.str("HOST")
 
 templates = Jinja2Templates(directory="templates")
-
-
 class SlackEvent(BaseModel):
     type: str
     challenge: str | None = None
 
 
 @app.post("/slack/events")
-async def slack_events(
-    request: Request, background_tasks: BackgroundTasks
-) -> dict[str, str | None]:
+async def slack_events(request: Request, background_tasks: BackgroundTasks) -> dict[str, str | None]:
     """Handle incoming Slack events."""
     body = await request.json()
     event = SlackEvent(**body)
@@ -54,9 +50,7 @@ async def slack_events(
 
 
 @app.post("/slack/commands")
-async def slack_commands(
-    request: Request, background_tasks: BackgroundTasks
-) -> dict[str, str]:
+async def slack_commands(request: Request, background_tasks: BackgroundTasks) -> dict[str, str]:
     """Handle incoming Slack commands."""
     await verify_slack_request(request, SIGNING_SECRET)
     payload: dict = dict(await request.form())
@@ -87,16 +81,12 @@ async def oauth_callback(request: Request) -> RedirectResponse:
 
 @app.get("/success", response_class=HTMLResponse)
 async def success(request: Request, team: str):
-    return templates.TemplateResponse(
-        "success.html", {"request": request, "team": team}
-    )
+    return templates.TemplateResponse("success.html", {"request": request, "team": team})
 
 
 @app.get("/error", response_class=HTMLResponse)
 async def error(request: Request, message: str):
-    return templates.TemplateResponse(
-        "error.html", {"request": request, "message": message}
-    )
+    return templates.TemplateResponse("error.html", {"request": request, "message": message})
 
 
 if __name__ == "__main__":
