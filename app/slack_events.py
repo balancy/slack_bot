@@ -59,7 +59,7 @@ async def handle_event(payload: dict, bot_token: str) -> None:
                 membership_check = await http_client.post(
                     "https://slack.com/api/conversations.members",
                     headers={"Authorization": f"Bearer {bot_token}"},
-                    json={"channel": channel_id}
+                    params={"channel": channel_id}
                 )
                 membership_response = membership_check.json()
                 logger.info(f"Membership check response: {membership_response}")
