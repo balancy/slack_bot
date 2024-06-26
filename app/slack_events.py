@@ -53,7 +53,20 @@ def handle_event(payload: dict, bot_token: str) -> None:
         response_message = f"You said: {user_message}"
 
         try:
-            logger.info(f"Posting message to channel ID: {channel_id}")
-            client.chat_postMessage(channel=channel_id, text=response_message)
+            logger.info(f"Attempting to post message to channel ID: {channel_id}")
+            response = client.chat_postMessage(channel=channel_id, text=response_message)
+            logger.info(f"Message posted successfully: {response}")
         except SlackApiError as e:
             logger.error(f"Error posting message: {e.response['error']}")
+            logger.error(f"Payload: {payload}")
+            logger.error(f"Event: {event}")
+            if e.response['error'] == 'channel_not_found':
+                logger.error("The bot might not be a member of the channel. Please invite the bot to the channel.")
+            elif e.response['error'] == 'not_in_channel':
+                logger.error("The bot is not in the channel. Please ensure the bot is invited to the channel.")
+            elif e.response['error'] == 'is_archived':
+                logger.error("The channel is archived and cannot be posted to.")
+            elif e.response['error'] == 'msg_too_long':
+                logger.error("The message is too long to be posted.")
+            else:
+                logger.error(f"Unexpected error: {e.response['error']}")
