@@ -55,15 +55,19 @@ async def handle_event(payload: dict, bot_token: str) -> None:
 
         try:
             logger.info(f"Posting message to channel: {channel_id}")
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {bot_token}",
+            }
             message_payload = {
                 "channel": channel_id,
                 "text": response_message,
-                "token": bot_token,
             }
             async with httpx.AsyncClient() as http_client:
                 result = await http_client.post(
                     "https://slack.com/api/chat.postMessage",
                     json=message_payload,
+                    headers=headers,
                 )
                 logger.info(f"Response from Slack API: {result.json()}")
                 if result.status_code != 200 or not result.json().get("ok", False):
