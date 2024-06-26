@@ -1,7 +1,7 @@
 # Makefile
 
 # Define a default target
-.DEFAULT_GOAL := help
+.DEFAULT_GOAL := launch
 
 # Help target to list available commands
 help:
