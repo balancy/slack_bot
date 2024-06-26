@@ -47,7 +47,7 @@ async def handle_event(payload: dict, db: Session) -> None:
     event = payload.get("event", {})
     team_id = payload.get("team_id")
 
-    if not(event.get("type") == "message" and "subtype" not in event):
+    if not (event.get("type") == "message" and "subtype" not in event):
         return
 
     if event.get("bot_id") is not None:
