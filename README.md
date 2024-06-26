@@ -22,6 +22,9 @@ cp .env.example .env
 where
 - `SLACK_BOT_TOKEN` - your slack bot token
 - `SLACK_SIGNING_SECRET` - your slack signing secret
+- `SLACK_CLIENT_ID` - your slack app client id
+- `SLACK_CLIENT_SECRET` - your slack app client secret
+- `HOST` - host of your app
 
 3. Launch the app
 

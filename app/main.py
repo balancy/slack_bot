@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from environs import Env
 from fastapi import BackgroundTasks, FastAPI, Request
 from pydantic import BaseModel
 from slack_sdk import WebClient
+from slack_sdk.errors import SlackApiError
 
 from app.slack_commands import handle_command
 from app.slack_events import handle_event, verify_slack_request
@@ -20,19 +22,20 @@ logger = logging.getLogger(__name__)
 env = Env()
 env.read_env()
 
-app.state.bot_token = env.str("SLACK_BOT_TOKEN")
-app.state.signing_secret = env.str("SLACK_SIGNING_SECRET")
+BOT_TOKEN = env.str("SLACK_BOT_TOKEN")
+SIGNING_SECRET = env.str("SLACK_SIGNING_SECRET")
+CLIENT_ID = env.str("SLACK_CLIENT_ID")
+CLIENT_SECRET = env.str("SLACK_CLIENT_SECRET")
+HOST = env.str("HOST")
 
 
 class SlackEvent(BaseModel):
     type: str
-    challenge: str = None
+    challenge: str | None = None
 
 
 @app.post("/slack/events")
-async def slack_events(
-    request: Request, background_tasks: BackgroundTasks
-) -> dict[str, str]:
+async def slack_events(request: Request, background_tasks: BackgroundTasks) -> dict[str, str | None]:
     """Handle incoming Slack events."""
     body = await request.json()
     event = SlackEvent(**body)
@@ -40,24 +43,22 @@ async def slack_events(
     if event.type == "url_verification":
         return {"challenge": event.challenge}
 
-    await verify_slack_request(request, app.state.signing_secret)
-    background_tasks.add_task(handle_event, body, app.state.bot_token)
+    await verify_slack_request(request, SIGNING_SECRET)
+    background_tasks.add_task(handle_event, body, BOT_TOKEN)
     return {"status": "ok"}
 
 
 @app.post("/slack/commands")
-async def slack_commands(
-    request: Request, background_tasks: BackgroundTasks
-) -> dict[str, str]:
+async def slack_commands(request: Request, background_tasks: BackgroundTasks) -> dict[str, str]:
     """Handle incoming Slack commands."""
-    await verify_slack_request(request, app.state.signing_secret)
-    payload = await request.form()
-    background_tasks.add_task(handle_command, payload, app.state.bot_token)
+    await verify_slack_request(request, SIGNING_SECRET)
+    payload: dict = dict(await request.form())
+    background_tasks.add_task(handle_command, payload, BOT_TOKEN)
     return {"status": "ok"}
 
 
 @app.get("/slack/oauth/callback")
-async def oauth_callback(request: Request):
+async def oauth_callback(request: Request) -> dict[str, Any]:
     code = request.query_params.get("code")
     if not code:
         return {"error": "No code provided"}
@@ -66,10 +67,10 @@ async def oauth_callback(request: Request):
 
     try:
         response = client.oauth_v2_access(
-            client_id=client_id,
-            client_secret=client_secret,
+            client_id=CLIENT_ID,
+            client_secret=CLIENT_SECRET,
             code=code,
-            redirect_uri="https://somepetprojects.ru/slack/oauth/callback",
+            redirect_uri=f"{HOST}/slack/oauth/callback",
         )
         return {"ok": True, "response": response}
     except SlackApiError as e:
