@@ -18,7 +18,9 @@ async def verify_slack_request(request: Request, signing_secret: str) -> None:
 
     if "X-Slack-Request-Timestamp" not in headers:
         logger.error("X-Slack-Request-Timestamp header missing")
-        raise HTTPException(status_code=400, detail="Bad Request: Missing required headers"       )
+        raise HTTPException(
+            status_code=400, detail="Bad Request: Missing required headers"
+        )
 
     body = await request.body()
     timestamp = headers["X-Slack-Request-Timestamp"]
@@ -27,7 +29,9 @@ async def verify_slack_request(request: Request, signing_secret: str) -> None:
     basestring = f"v0:{timestamp}:{body.decode('utf-8')}"
     secret = bytes(signing_secret, "utf-8")
 
-    my_signature = "v0=" + hmac.new(secret, basestring.encode("utf-8"), hashlib.sha256).hexdigest()
+    my_signature = (
+        "v0=" + hmac.new(secret, basestring.encode("utf-8"), hashlib.sha256).hexdigest()
+    )
 
     if not hmac.compare_digest(my_signature, slack_signature):
         logger.warning("Request verification failed")
