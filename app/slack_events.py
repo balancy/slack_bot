@@ -9,8 +9,7 @@ from fastapi import HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.chatgpt import ask_chatgpt
-
-from .models import Team
+from app.models import Team
 
 logger = logging.getLogger(__name__)
 

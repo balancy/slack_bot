@@ -4,7 +4,7 @@ import logging
 
 import httpx
 
-from .environment import OPENAI_API_KEY
+from app.environment import OPENAI_API_KEY
 
 logger = logging.getLogger(__name__)
 

@@ -7,8 +7,8 @@ from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 from sqlalchemy.orm import Session
 
-from .chatgpt import ask_chatgpt
-from .models import Team
+from app.chatgpt import ask_chatgpt
+from app.models import Team
 
 logger = logging.getLogger(__name__)
 

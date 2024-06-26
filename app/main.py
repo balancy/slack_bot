@@ -12,11 +12,10 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.environment import CLIENT_ID, CLIENT_SECRET, HOST, SIGNING_SECRET
+from app.models import SessionLocal, Team
 from app.slack_commands import handle_command
 from app.slack_events import handle_event, verify_slack_request
-
-from .environment import CLIENT_ID, CLIENT_SECRET, HOST, SIGNING_SECRET
-from .models import SessionLocal, Team
 
 app = FastAPI()
 
