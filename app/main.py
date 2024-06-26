@@ -6,7 +6,6 @@ import logging
 from typing import Any, Generator
 
 import httpx
-from environs import Env
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -16,6 +15,7 @@ from sqlalchemy.orm import Session
 from app.slack_commands import handle_command
 from app.slack_events import handle_event, verify_slack_request
 
+from .environment import CLIENT_ID, CLIENT_SECRET, HOST, SIGNING_SECRET
 from .models import SessionLocal, Team
 
 app = FastAPI()
@@ -23,14 +23,7 @@ app = FastAPI()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-env = Env()
-env.read_env()
 
-BOT_TOKEN = env.str("SLACK_BOT_TOKEN")
-SIGNING_SECRET = env.str("SLACK_SIGNING_SECRET")
-CLIENT_ID = env.str("SLACK_CLIENT_ID")
-CLIENT_SECRET = env.str("SLACK_CLIENT_SECRET")
-HOST = env.str("HOST")
 
 templates = Jinja2Templates(directory="templates")
 
