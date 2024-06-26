@@ -18,6 +18,7 @@ async def handle_command(payload: dict, bot_token: str) -> None:
     if command == "/call_panda":
         response_message = f"You asked: {text}"
         try:
+            logger.info(f"Responding to command in response_url: {response_url}")
             client.chat_postMessage(channel=str(response_url), text=response_message)
         except SlackApiError as e:
             logger.error(f"Error posting message: {e.response['error']}")

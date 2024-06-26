@@ -53,6 +53,7 @@ def handle_event(payload: dict, bot_token: str) -> None:
         response_message = f"You said: {user_message}"
 
         try:
+            logger.info(f"Posting message to channel ID: {channel_id}")
             client.chat_postMessage(channel=channel_id, text=response_message)
         except SlackApiError as e:
             logger.error(f"Error posting message: {e.response['error']}")
