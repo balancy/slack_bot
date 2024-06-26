@@ -20,10 +20,10 @@ async def ask_chatgpt(prompt: str) -> str:
             json={
                 "model": "gpt-3.5-turbo",
                 "messages": [
-                    {"role": "system", "content": "You are a helpful assistant."},
                     {"role": "user", "content": prompt},
                 ],
                 "max_tokens": 50,
+                "temperature": 0.7,
             },
         )
         response.raise_for_status()
