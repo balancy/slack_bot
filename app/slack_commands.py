@@ -22,11 +22,13 @@ async def handle_command(payload: dict, bot_token: str) -> None:
 
             headers = {
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer {bot_token}"
+                "Authorization": f"Bearer {bot_token}",
             }
 
             async with httpx.AsyncClient() as http_client:
-                result = await http_client.post(response_url, json={"text": response_message}, headers=headers)
+                result = await http_client.post(
+                    response_url, json={"text": response_message}, headers=headers
+                )
 
             if result.status_code != 200:
                 logger.error(f"Error posting message: {result.text}")
@@ -37,7 +39,9 @@ async def handle_command(payload: dict, bot_token: str) -> None:
         if channel_id:
             client = WebClient(token=bot_token)
             try:
-                response = client.chat_postMessage(channel=channel_id, text=response_message)
+                response = client.chat_postMessage(
+                    channel=channel_id, text=response_message
+                )
                 logger.info(f"Message posted successfully: {response}")
             except SlackApiError as e:
                 logger.error(f"Error posting message: {e.response['error']}")

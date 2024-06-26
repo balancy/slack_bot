@@ -4,9 +4,8 @@ import hashlib
 import hmac
 import logging
 
+import httpx
 from fastapi import HTTPException, Request
-from slack_sdk.errors import SlackApiError
-from slack_sdk.web.client import WebClient
 
 logger = logging.getLogger(__name__)
 
@@ -38,9 +37,8 @@ async def verify_slack_request(request: Request, signing_secret: str) -> None:
         raise HTTPException(status_code=403, detail="Request verification failed")
 
 
-def handle_event(payload: dict, bot_token: str) -> None:
+async def handle_event(payload: dict, bot_token: str) -> None:
     """Handle incoming Slack events."""
-    client = WebClient(token=bot_token)
     event = payload.get("event", {})
 
     if event.get("type") == "message" and "subtype" not in event:
@@ -56,18 +54,22 @@ def handle_event(payload: dict, bot_token: str) -> None:
         logger.info(f"Channel ID from event: {channel_id}")
 
         try:
-            logger.info(f"Attempting to post message to channel ID: {channel_id}")
-            response = client.chat_postMessage(channel=channel_id, text=response_message)
-            logger.info(f"Message posted successfully: {response}")
-        except SlackApiError as e:
-            logger.error(f"Error posting message: {e.response['error']}")
-            if e.response['error'] == 'channel_not_found':
-                logger.error("The bot might not be a member of the channel. Attempting to join the channel.")
-                try:
-                    join_response = client.conversations_join(channel=channel_id)
-                    logger.info(f"Joined channel: {join_response}")
-                    # After joining, try posting the message again
-                    response = client.chat_postMessage(channel=channel_id, text=response_message)
-                    logger.info(f"Message posted successfully after joining: {response}")
-                except SlackApiError as join_error:
-                    logger.error(f"Failed to join and post message: {join_error.response['error']}")
+            logger.info(f"Posting message to channel: {channel_id}")
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {bot_token}",
+            }
+            message_payload = {"channel": channel_id, "text": response_message}
+            async with httpx.AsyncClient() as http_client:
+                result = await http_client.post(
+                    "https://slack.com/api/chat.postMessage",
+                    json=message_payload,
+                    headers=headers,
+                )
+                logger.info(f"Response from Slack API: {result.json()}")
+                if result.status_code != 200 or not result.json().get("ok", False):
+                    logger.error(f"Error posting message: {result.json()}")
+                else:
+                    logger.info("Message posted successfully.")
+        except Exception as e:
+            logger.error(f"Error posting message: {str(e)}")
