@@ -3,17 +3,20 @@
 from __future__ import annotations
 
 import logging
+from typing import Any, Generator
 
+import httpx
 from environs import Env
-from fastapi import BackgroundTasks, FastAPI, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request
+from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
-from slack_sdk import WebClient
-from slack_sdk.errors import SlackApiError
+from sqlalchemy.orm import Session
 
 from app.slack_commands import handle_command
 from app.slack_events import handle_event, verify_slack_request
+
+from .models import SessionLocal, Team
 
 app = FastAPI()
 
@@ -30,13 +33,25 @@ CLIENT_SECRET = env.str("SLACK_CLIENT_SECRET")
 HOST = env.str("HOST")
 
 templates = Jinja2Templates(directory="templates")
+
+
 class SlackEvent(BaseModel):
     type: str
     challenge: str | None = None
 
 
+def get_db() -> Generator[Session, Any, None]:
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
 @app.post("/slack/events")
-async def slack_events(request: Request, background_tasks: BackgroundTasks) -> dict[str, str | None]:
+async def slack_events(
+    request: Request, background_tasks: BackgroundTasks, db: Session = Depends(get_db)
+) -> dict[str, str | None]:
     """Handle incoming Slack events."""
     body = await request.json()
     event = SlackEvent(**body)
@@ -45,48 +60,71 @@ async def slack_events(request: Request, background_tasks: BackgroundTasks) -> d
         return {"challenge": event.challenge}
 
     await verify_slack_request(request, SIGNING_SECRET)
-    background_tasks.add_task(handle_event, body, BOT_TOKEN)
+    background_tasks.add_task(handle_event, body, db)
     return {"status": "ok"}
 
 
 @app.post("/slack/commands")
-async def slack_commands(request: Request, background_tasks: BackgroundTasks) -> dict[str, str]:
+async def slack_commands(
+    request: Request, background_tasks: BackgroundTasks, db: Session = Depends(get_db)
+) -> dict[str, str]:
     """Handle incoming Slack commands."""
     await verify_slack_request(request, SIGNING_SECRET)
     payload: dict = dict(await request.form())
-    background_tasks.add_task(handle_command, payload, BOT_TOKEN)
+    background_tasks.add_task(handle_command, payload, db)
     return {"status": "ok"}
 
 
 @app.get("/slack/oauth/callback")
-async def oauth_callback(request: Request) -> RedirectResponse:
+async def oauth_callback(
+    request: Request, db: Session = Depends(get_db)
+) -> HTMLResponse:
     code = request.query_params.get("code")
     if not code:
-        return RedirectResponse(url=f"{HOST}/error?message=No%20code%20provided")
+        raise HTTPException(status_code=400, detail="No code provided")
 
-    client = WebClient()
-
-    try:
-        response = client.oauth_v2_access(
-            client_id=CLIENT_ID,
-            client_secret=CLIENT_SECRET,
-            code=code,
-            redirect_uri=f"{HOST}/slack/oauth/callback",
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://slack.com/api/oauth.v2.access",
+            data={
+                "client_id": CLIENT_ID,
+                "client_secret": CLIENT_SECRET,
+                "code": code,
+                "redirect_uri": f"{HOST}/slack/oauth/callback",
+            },
         )
-        return RedirectResponse(url=f"{HOST}/success?team={response['team']['name']}")
-    except SlackApiError as e:
-        logger.error(f"Slack API error: {str(e)}")
-        return RedirectResponse(url=f"{HOST}/error?message={str(e)}")
+        data = response.json()
+        if not data.get("ok"):
+            raise HTTPException(status_code=400, detail=data.get("error"))
+
+        access_token = data["access_token"]
+        team_id = data["team"]["id"]
+        team_name = data["team"]["name"]
+
+        team = db.query(Team).filter(Team.team_id == team_id).first()
+        if team:
+            team.access_token = access_token
+            team.team_name = team_name
+        else:
+            team = Team(team_id=team_id, team_name=team_name, access_token=access_token)
+            db.add(team)
+        db.commit()
+
+        return HTMLResponse(content=f"App successfully installed in team: {team_name}")
 
 
 @app.get("/success", response_class=HTMLResponse)
 async def success(request: Request, team: str):
-    return templates.TemplateResponse("success.html", {"request": request, "team": team})
+    return templates.TemplateResponse(
+        "success.html", {"request": request, "team": team}
+    )
 
 
 @app.get("/error", response_class=HTMLResponse)
 async def error(request: Request, message: str):
-    return templates.TemplateResponse("error.html", {"request": request, "message": message})
+    return templates.TemplateResponse(
+        "error.html", {"request": request, "message": message}
+    )
 
 
 if __name__ == "__main__":

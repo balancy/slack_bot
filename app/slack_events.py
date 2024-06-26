@@ -6,6 +6,8 @@ import logging
 
 import httpx
 from fastapi import HTTPException, Request
+from sqlalchemy.orm import Session
+from .models import Team
 
 logger = logging.getLogger(__name__)
 
@@ -37,9 +39,10 @@ async def verify_slack_request(request: Request, signing_secret: str) -> None:
         raise HTTPException(status_code=403, detail="Request verification failed")
 
 
-async def handle_event(payload: dict, bot_token: str) -> None:
+async def handle_event(payload: dict, db: Session) -> None:
     """Handle incoming Slack events."""
     event = payload.get("event", {})
+    team_id = payload.get("team_id")
 
     if event.get("type") == "message" and "subtype" not in event:
         if event.get("bot_id") is not None:
@@ -53,30 +56,14 @@ async def handle_event(payload: dict, bot_token: str) -> None:
         logger.info(f"Event: {event}")
         logger.info(f"Channel ID from event: {channel_id}")
 
+        team = db.query(Team).filter(Team.team_id == team_id).first()
+        if not team:
+            logger.error(f"Team not found for team_id: {team_id}")
+            return
+
+        bot_token = team.access_token
+
         try:
-            logger.info(f"Checking membership for channel: {channel_id}")
-            async with httpx.AsyncClient() as http_client:
-                membership_check = await http_client.post(
-                    "https://slack.com/api/conversations.members",
-                    headers={"Authorization": f"Bearer {bot_token}"},
-                    params={"channel": channel_id}
-                )
-                membership_response = membership_check.json()
-                logger.info(f"Membership check response: {membership_response}")
-                if 'members' not in membership_response or not membership_response.get("ok", False):
-                    logger.error(f"Failed to retrieve members for channel: {channel_id}")
-                    return
-
-                if bot_token not in membership_response["members"]:
-                    logger.error(f"Bot is not a member of the channel: {channel_id}")
-                    return
-
-            logger.info(f"Posting message to channel: {channel_id}")
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {bot_token}",
-            }
-
             logger.info(f"Posting message to channel: {channel_id}")
             headers = {
                 "Content-Type": "application/json",
@@ -99,8 +86,3 @@ async def handle_event(payload: dict, bot_token: str) -> None:
                     logger.info("Message posted successfully.")
         except Exception as e:
             logger.error(f"Error posting message: {str(e)}")
-
-    elif event.get("type") == "member_joined_channel":
-        channel_id = event["channel"]
-        user_id = event["user"]
-        logger.info(f"User {user_id} joined channel: {channel_id}")

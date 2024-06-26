@@ -5,15 +5,26 @@ import logging
 import httpx
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
+from sqlalchemy.orm import Session
+
+from .models import Team
 
 logger = logging.getLogger(__name__)
 
 
-async def handle_command(payload: dict, bot_token: str) -> None:
+async def handle_command(payload: dict, db: Session) -> None:
     """Handle incoming Slack commands."""
     command = payload.get("command")
     text = payload.get("text")
     response_url = str(payload.get("response_url"))
+    team_id = payload.get("team_id")
+
+    team = db.query(Team).filter(Team.team_id == team_id).first()
+    if not team:
+        logger.error(f"Team not found for team_id: {team_id}")
+        return
+
+    bot_token = team.access_token
 
     if command == "/call_panda":
         response_message = f"You asked: {text}"
@@ -37,7 +48,7 @@ async def handle_command(payload: dict, bot_token: str) -> None:
 
         channel_id = payload.get("channel_id")
         if channel_id:
-            client = WebClient(token=bot_token)
+            client = WebClient(token=str(bot_token))
             try:
                 response = client.chat_postMessage(
                     channel=channel_id, text=response_message
