@@ -52,21 +52,22 @@ def handle_event(payload: dict, bot_token: str) -> None:
         user_message = event.get("text")
         response_message = f"You said: {user_message}"
 
+        logger.info(f"Event: {event}")
+        logger.info(f"Channel ID from event: {channel_id}")
+
         try:
             logger.info(f"Attempting to post message to channel ID: {channel_id}")
             response = client.chat_postMessage(channel=channel_id, text=response_message)
             logger.info(f"Message posted successfully: {response}")
         except SlackApiError as e:
             logger.error(f"Error posting message: {e.response['error']}")
-            logger.error(f"Payload: {payload}")
-            logger.error(f"Event: {event}")
             if e.response['error'] == 'channel_not_found':
-                logger.error("The bot might not be a member of the channel. Please invite the bot to the channel.")
-            elif e.response['error'] == 'not_in_channel':
-                logger.error("The bot is not in the channel. Please ensure the bot is invited to the channel.")
-            elif e.response['error'] == 'is_archived':
-                logger.error("The channel is archived and cannot be posted to.")
-            elif e.response['error'] == 'msg_too_long':
-                logger.error("The message is too long to be posted.")
-            else:
-                logger.error(f"Unexpected error: {e.response['error']}")
+                logger.error("The bot might not be a member of the channel. Attempting to join the channel.")
+                try:
+                    join_response = client.conversations_join(channel=channel_id)
+                    logger.info(f"Joined channel: {join_response}")
+                    # After joining, try posting the message again
+                    response = client.chat_postMessage(channel=channel_id, text=response_message)
+                    logger.info(f"Message posted successfully after joining: {response}")
+                except SlackApiError as join_error:
+                    logger.error(f"Failed to join and post message: {join_error.response['error']}")
