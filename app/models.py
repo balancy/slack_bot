@@ -1,4 +1,4 @@
-"""Module for defining the database schema"""
+"""Module for defining the database schema."""
 
 from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -12,6 +12,8 @@ Base = declarative_base()
 
 
 class Team(Base):
+    """Team model."""
+
     __tablename__ = "teams"
     id = Column(Integer, primary_key=True, index=True)
     team_id = Column(String, unique=True, index=True)

@@ -1,4 +1,4 @@
-"""Slack event handling functions"""
+"""Slack event handling functions."""
 
 import hashlib
 import hmac
@@ -16,14 +16,22 @@ logger = logging.getLogger(__name__)
 
 
 async def verify_slack_request(request: Request, signing_secret: str) -> None:
-    """Verify incoming Slack requests."""
+    """Verify incoming Slack requests.
+
+    Args:
+    ----
+        request: The incoming request.
+        signing_secret: The Slack signing secret.
+
+    """
     headers = request.headers
     logger.info(f"Headers: {headers}")
 
     if "X-Slack-Request-Timestamp" not in headers:
         logger.error("X-Slack-Request-Timestamp header missing")
         raise HTTPException(
-            status_code=400, detail="Bad Request: Missing required headers"
+            status_code=400,
+            detail="Bad Request: Missing required headers",
         )
 
     body = await request.body()
@@ -34,16 +42,31 @@ async def verify_slack_request(request: Request, signing_secret: str) -> None:
     secret = bytes(signing_secret, "utf-8")
 
     my_signature = (
-        "v0=" + hmac.new(secret, basestring.encode("utf-8"), hashlib.sha256).hexdigest()
+        "v0="
+        + hmac.new(
+            secret,
+            basestring.encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
     )
 
     if not hmac.compare_digest(my_signature, slack_signature):
         logger.warning("Request verification failed")
-        raise HTTPException(status_code=403, detail="Request verification failed")
+        raise HTTPException(
+            status_code=403,
+            detail="Request verification failed",
+        )
 
 
 async def handle_event(payload: dict, db: Session) -> None:
-    """Handle incoming Slack events."""
+    """Handle incoming Slack events.
+
+    Args:
+    ----
+        payload: The incoming event payload.
+        db: The database session.
+
+    """
     event = payload.get("event", {})
     team_id = payload.get("team_id")
 
@@ -57,7 +80,7 @@ async def handle_event(payload: dict, db: Session) -> None:
     channel_id = event.get("channel")
     user_message = event.get("text")
 
-    cleaned_message = re.sub(r'<@U[A-Z0-9]+>', '', user_message).strip()
+    cleaned_message = re.sub(r"<@U[A-Z0-9]+>", "", user_message).strip()
 
     response_message = await ask_chatgpt(cleaned_message)
 
@@ -93,4 +116,4 @@ async def handle_event(payload: dict, db: Session) -> None:
             else:
                 logger.info("Message posted successfully.")
     except Exception as e:
-        logger.error(f"Error posting message: {str(e)}")
+        logger.exception(f"Error posting message: {e!s}")

@@ -3,19 +3,21 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Generator
+from typing import TYPE_CHECKING, Any, Generator
 
 import httpx
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
 
 from app.environment import CLIENT_ID, CLIENT_SECRET, HOST, SIGNING_SECRET
 from app.models import SessionLocal, Team
 from app.slack_commands import handle_command
 from app.slack_events import handle_event, verify_slack_request
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
 
 app = FastAPI()
 
@@ -27,11 +29,14 @@ templates = Jinja2Templates(directory="templates")
 
 
 class SlackEvent(BaseModel):
+    """Slack event model."""
+
     type: str
     challenge: str | None = None
 
 
 def get_db() -> Generator[Session, Any, None]:
+    """Get a database session."""
     db = SessionLocal()
     try:
         yield db
@@ -41,9 +46,19 @@ def get_db() -> Generator[Session, Any, None]:
 
 @app.post("/slack/events")
 async def slack_events(
-    request: Request, background_tasks: BackgroundTasks, db: Session = Depends(get_db)
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
 ) -> dict[str, str | None]:
-    """Handle incoming Slack events."""
+    """Handle incoming Slack events.
+
+    Args:
+    ----
+        request: The incoming request.
+        background_tasks: The background tasks.
+        db: The database session.
+
+    """
     body = await request.json()
     event = SlackEvent(**body)
 
@@ -57,9 +72,19 @@ async def slack_events(
 
 @app.post("/slack/commands")
 async def slack_commands(
-    request: Request, background_tasks: BackgroundTasks, db: Session = Depends(get_db)
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
 ) -> dict[str, str]:
-    """Handle incoming Slack commands."""
+    """Handle incoming Slack commands.
+
+    Args:
+    ----
+        request: The incoming request.
+        background_tasks: The background tasks.
+        db: The database session.
+
+    """
     await verify_slack_request(request, SIGNING_SECRET)
     payload: dict = dict(await request.form())
     background_tasks.add_task(handle_command, payload, db)
@@ -68,8 +93,17 @@ async def slack_commands(
 
 @app.get("/slack/oauth/callback")
 async def oauth_callback(
-    request: Request, db: Session = Depends(get_db)
+    request: Request,
+    db: Session = Depends(get_db),
 ) -> HTMLResponse:
+    """Handle the OAuth callback from Slack.
+
+    Args:
+    ----
+        request: The incoming request.
+        db: The database session.
+
+    """
     code = request.query_params.get("code")
     if not code:
         raise HTTPException(status_code=400, detail="No code provided")
@@ -97,25 +131,17 @@ async def oauth_callback(
             team.access_token = access_token
             team.team_name = team_name
         else:
-            team = Team(team_id=team_id, team_name=team_name, access_token=access_token)
+            team = Team(
+                team_id=team_id,
+                team_name=team_name,
+                access_token=access_token,
+            )
             db.add(team)
         db.commit()
 
-        return HTMLResponse(content=f"App successfully installed in team: {team_name}")
-
-
-@app.get("/success", response_class=HTMLResponse)
-async def success(request: Request, team: str):
-    return templates.TemplateResponse(
-        "success.html", {"request": request, "team": team}
-    )
-
-
-@app.get("/error", response_class=HTMLResponse)
-async def error(request: Request, message: str):
-    return templates.TemplateResponse(
-        "error.html", {"request": request, "message": message}
-    )
+        return HTMLResponse(
+            content=f"App successfully installed in team: {team_name}",
+        )
 
 
 if __name__ == "__main__":

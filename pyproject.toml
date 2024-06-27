@@ -1,0 +1,14 @@
+[tool.ruff]
+line-length = 80
+lint.select = ["ALL"]
+exclude=[".venv"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 5
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.black]
+line-length = 80
+exclude = '(\.git|\.venv)'
