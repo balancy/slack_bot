@@ -2,11 +2,11 @@
 
 ![bot](bot.png)
 
-App represents bot for Slack application. It uses ChatGPT to answer in public chats if is invited and via private messages.
+The app represents the AI slack bot. It uses ChatGPT to answer in public chats if is invited or via the private messages.
 
 ## Local installation and launch
 
-You should have at least Git, Python3.10 and Docker installed in your system. You should also create a bot instance with correct permissions in your slack workspace.
+You should have at least Git and Docker installed on your system. You should also create a bot instance with correct permissions in your slack workspace.
 
 1. Clone the git repository
 
@@ -14,7 +14,7 @@ You should have at least Git, Python3.10 and Docker installed in your system. Yo
 git clone https://github.com/balancy/slack_bot.git
 ```
 
-2. Copy file with environment variables and define them inside .env
+2. Copy the file with the environment variables and define them inside .env
 
 ```
 cp .env.example .env
@@ -25,6 +25,14 @@ where
 - `SLACK_CLIENT_SECRET` - your slack app client secret
 - `HOST` - host of your app
 - `OPENAPI_API_KEY` - your openapi key
+are required environment variables
+
+AND
+- `OPENAI_TEMPERATURE` - temperature for the chatgpt model
+- `OPENAI_MODEL` - chatgpt model to use
+- `OPENAI_MAX_TOKENS` - max tokens for chatgpt response
+are optional environment variables
+
 
 3. Launch the app
 
@@ -34,5 +42,5 @@ make launch
 
 ## Usage
 
-You should generate link for the bot app and share it. Slack user whoo opens the link and grants permission for the bot,
-add it to his workspace. You can communicate with the bot with tagging it or via /call_panda command.
+You should generate the link for the bot app and share it. Slack user who opens the link and grants permission for the bot,
+add it to his/her workspace. You can communicate with the bot by tagging it or via /call_panda command.

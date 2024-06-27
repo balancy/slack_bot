@@ -4,7 +4,12 @@ import logging
 
 import httpx
 
-from app.environment import OPENAI_API_KEY
+from app.environment import (
+    OPENAI_API_KEY,
+    OPENAI_MAX_TOKENS,
+    OPENAI_MODEL,
+    OPENAI_TEMPERATURE,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -25,12 +30,12 @@ async def ask_chatgpt(prompt: str) -> str:
                 "Content-Type": "application/json",
             },
             json={
-                "model": "gpt-3.5-turbo",
+                "model": OPENAI_MODEL,
                 "messages": [
                     {"role": "user", "content": prompt},
                 ],
-                "max_tokens": 50,
-                "temperature": 0.7,
+                "max_tokens": OPENAI_MAX_TOKENS,
+                "temperature": OPENAI_TEMPERATURE,
             },
         )
         response.raise_for_status()
