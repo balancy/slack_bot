@@ -48,9 +48,10 @@ def get_db() -> Generator[Session, Any, None]:
 async def slack_events(
     request: Request,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db),
+    db: Session | None = None,
 ) -> dict[str, str | None]:
-    """Handle incoming Slack events.
+    """
+    Handle incoming Slack events.
 
     Args:
     ----
@@ -59,6 +60,8 @@ async def slack_events(
         db: The database session.
 
     """
+    session: Session = db or Depends(get_db)
+
     body = await request.json()
     event = SlackEvent(**body)
 
@@ -66,7 +69,7 @@ async def slack_events(
         return {"challenge": event.challenge}
 
     await verify_slack_request(request, SIGNING_SECRET)
-    background_tasks.add_task(handle_event, body, db)
+    background_tasks.add_task(handle_event, body, session)
     return {"status": "ok"}
 
 
@@ -74,9 +77,10 @@ async def slack_events(
 async def slack_commands(
     request: Request,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db),
+    db: Session | None = None,
 ) -> dict[str, str]:
-    """Handle incoming Slack commands.
+    """
+    Handle incoming Slack commands.
 
     Args:
     ----
@@ -85,18 +89,21 @@ async def slack_commands(
         db: The database session.
 
     """
+    session: Session = db or Depends(get_db)
+
     await verify_slack_request(request, SIGNING_SECRET)
     payload: dict = dict(await request.form())
-    background_tasks.add_task(handle_command, payload, db)
+    background_tasks.add_task(handle_command, payload, session)
     return {"status": "ok"}
 
 
 @app.get("/slack/oauth/callback")
 async def oauth_callback(
     request: Request,
-    db: Session = Depends(get_db),
+    db: Session | None = None,
 ) -> HTMLResponse:
-    """Handle the OAuth callback from Slack.
+    """
+    Handle the OAuth callback from Slack.
 
     Args:
     ----
@@ -104,6 +111,7 @@ async def oauth_callback(
         db: The database session.
 
     """
+    session: Session = db or Depends(get_db)
     code = request.query_params.get("code")
     if not code:
         raise HTTPException(status_code=400, detail="No code provided")
@@ -126,7 +134,7 @@ async def oauth_callback(
         team_id = data["team"]["id"]
         team_name = data["team"]["name"]
 
-        team = db.query(Team).filter(Team.team_id == team_id).first()
+        team = session.query(Team).filter(Team.team_id == team_id).first()
         if team:
             team.access_token = access_token
             team.team_name = team_name
@@ -136,16 +144,9 @@ async def oauth_callback(
                 team_name=team_name,
                 access_token=access_token,
             )
-            db.add(team)
-        db.commit()
+            session.add(team)
+        session.commit()
 
         return HTMLResponse(
             content=f"App successfully installed in team: {team_name}",
         )
-
-
-if __name__ == "__main__":
-    logger.info("Starting server...")
-    import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=8002)

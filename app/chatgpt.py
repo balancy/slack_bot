@@ -15,7 +15,8 @@ logger = logging.getLogger(__name__)
 
 
 async def ask_chatgpt(prompt: str) -> str:
-    """Ask the ChatGPT model a question.
+    """
+    Ask the ChatGPT model a question.
 
     Args:
     ----
@@ -43,5 +44,4 @@ async def ask_chatgpt(prompt: str) -> str:
 
         if response_json.get("choices"):
             return response_json["choices"][0]["message"]["content"].strip()
-        else:
-            return "Sorry, I couldn't process your request."
+        return "Sorry, I couldn't process your request."

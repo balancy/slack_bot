@@ -10,13 +10,15 @@ from fastapi import HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.chatgpt import ask_chatgpt
+from app.constants import SUCCESSFUL_STATUS_CODE
 from app.models import Team
 
 logger = logging.getLogger(__name__)
 
 
 async def verify_slack_request(request: Request, signing_secret: str) -> None:
-    """Verify incoming Slack requests.
+    """
+    Verify incoming Slack requests.
 
     Args:
     ----
@@ -58,8 +60,52 @@ async def verify_slack_request(request: Request, signing_secret: str) -> None:
         )
 
 
+async def post_message(
+    channel_id: str,
+    response_message: str,
+    bot_token: str,
+) -> None:
+    """
+    Post a message to a Slack channel.
+
+    Args:
+    ----
+        channel_id: The channel ID.
+        response_message: The message to post.
+        bot_token: The bot token.
+
+    """
+    try:
+        logger.info(f"Posting message to channel: {channel_id}")
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {bot_token}",
+        }
+        message_payload = {
+            "channel": channel_id,
+            "text": response_message,
+        }
+        async with httpx.AsyncClient() as http_client:
+            result = await http_client.post(
+                "https://slack.com/api/chat.postMessage",
+                json=message_payload,
+                headers=headers,
+            )
+            logger.info(f"Response from Slack API: {result.json()}")
+            if (
+                result.status_code != SUCCESSFUL_STATUS_CODE
+                or not result.json().get("ok", False)
+            ):
+                logger.error(f"Error posting message: {result.json()}")
+            else:
+                logger.info("Message posted successfully.")
+    except Exception:
+        logger.exception("Error posting message")
+
+
 async def handle_event(payload: dict, db: Session) -> None:
-    """Handle incoming Slack events.
+    """
+    Handle incoming Slack events.
 
     Args:
     ----
@@ -94,26 +140,4 @@ async def handle_event(payload: dict, db: Session) -> None:
 
     bot_token = team.access_token
 
-    try:
-        logger.info(f"Posting message to channel: {channel_id}")
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {bot_token}",
-        }
-        message_payload = {
-            "channel": channel_id,
-            "text": response_message,
-        }
-        async with httpx.AsyncClient() as http_client:
-            result = await http_client.post(
-                "https://slack.com/api/chat.postMessage",
-                json=message_payload,
-                headers=headers,
-            )
-            logger.info(f"Response from Slack API: {result.json()}")
-            if result.status_code != 200 or not result.json().get("ok", False):
-                logger.error(f"Error posting message: {result.json()}")
-            else:
-                logger.info("Message posted successfully.")
-    except Exception as e:
-        logger.exception(f"Error posting message: {e!s}")
+    await post_message(channel_id, response_message, str(bot_token))
